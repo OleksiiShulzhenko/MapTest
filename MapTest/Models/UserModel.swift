@@ -7,15 +7,20 @@
 //
 
 import Foundation
-import RxSwift
 import GooglePlaces
 
+
 struct UserModel: Codable {
-    let userID:     Variable<String>
-    let name:       Variable<String>
-    var coordinate: Variable<CLLocationCoordinate2D?>
-    var lastUpdate: Variable<NSDate?>
-    var isOnline:   Observable<Bool> 
+    let userID:     String
+    let name:       String
+    var coordinate: CLLocationCoordinate2D?
+    var lastUpdate: NSDate?
+    var isOnline:   Bool {
+        get {
+            guard let interval = lastUpdate?.timeIntervalSinceReferenceDate else {return false}
+            return (NSDate().timeIntervalSinceReferenceDate - interval) < 4
+        }
+    }
     
     enum CodingKeys: String, CodingKey {
         case userID     = "userID"
@@ -27,26 +32,18 @@ struct UserModel: Codable {
     init(from decoder: Decoder) throws {
         do {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-            let userIDValue = try values.decode(String.self, forKey: .userID)
-            userID = Variable<String>.init(userIDValue)
-            let nameValue   = try values.decode(String.self, forKey: .name)
-            name   = Variable<String>.init(nameValue)
-            let coordinateValue = try values.decodeIfPresent(CLLocationCoordinate2D.self, forKey: .coordinate)
-            coordinate = Variable<CLLocationCoordinate2D?>.init(coordinateValue)
+            userID = try values.decode(String.self, forKey: .userID)
+            name   = try values.decode(String.self, forKey: .name)
+            coordinate = try values.decodeIfPresent(CLLocationCoordinate2D.self, forKey: .coordinate)
+            
             var lastUpdateValue: NSDate?
             if let timeIntervalSinceReferenceDate = try values.decodeIfPresent(Double.self, forKey: .lastUpdate) {
                 lastUpdateValue = NSDate(timeIntervalSinceReferenceDate: timeIntervalSinceReferenceDate)
             } else {
                 lastUpdateValue = nil
             }
-            lastUpdate = Variable<NSDate?>.init(lastUpdateValue)
+            lastUpdate = lastUpdateValue
             
-            let timer = Observable<NSInteger>.interval(90, scheduler: MainScheduler.instance)
-            isOnline = Observable<Bool>.combineLatest(self.lastUpdate.asObservable(), timer)
-            { (lastUpdate, timer) in
-                guard let interval = lastUpdate?.timeIntervalSinceReferenceDate else {return false}
-                return (NSDate().timeIntervalSinceReferenceDate - interval) > 90
-            }
         } catch let error {
             throw error
         }
@@ -55,10 +52,10 @@ struct UserModel: Codable {
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(userID.value, forKey: .userID)
-        try container.encode(name.value, forKey: .name)
-        try container.encodeIfPresent(coordinate.value, forKey: .coordinate)
-        try container.encodeIfPresent(lastUpdate.value?.timeIntervalSinceReferenceDate, forKey: .lastUpdate)
+        try container.encode(userID, forKey: .userID)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(coordinate, forKey: .coordinate)
+        try container.encodeIfPresent(lastUpdate?.timeIntervalSinceReferenceDate, forKey: .lastUpdate)
     }
 }
 

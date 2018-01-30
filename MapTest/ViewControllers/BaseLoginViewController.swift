@@ -9,6 +9,7 @@
 import Foundation
 import RxSwift
 import RxCocoa
+import FirebaseAuth
 
 class BaseLoginViewController: UIViewController {
     
@@ -28,6 +29,12 @@ class BaseLoginViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        do {
+            try Auth.auth().signOut()
+        } catch let error {
+            print(error)
+        }
+            
         emailTectField.rx.text
             .orEmpty
             .bind(to: viewModel.emailText)
@@ -60,10 +67,6 @@ class BaseLoginViewController: UIViewController {
         
         scrollableViewHeightConstraint.constant = self.view.frame.height + keyboardFrame.height
         scrollView.layoutIfNeeded()
-        
-//        var contentInset:UIEdgeInsets = self.scrollView.contentInset
-//        contentInset.bottom = delta
-//        scrollView.contentInset = contentInset
     }
     
     @objc func keyboardWillHide(notification:NSNotification){

@@ -8,7 +8,7 @@
 
 import UIKit
 
-class userCell: UITableViewCell {
+class UserCell: UITableViewCell {
     
     static let Identifier = "userCell"
     

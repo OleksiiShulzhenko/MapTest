@@ -7,8 +7,19 @@
 //
 
 import UIKit
+import FirebaseAuth
 
 class InitialViewController: UIViewController {
+    
+    override func viewDidLoad() {
+        if Auth.auth().currentUser != nil {
+            if let viewController = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "MapViewControllerID") as? MapViewController {
+                if let navController = self.navigationController {
+                    navController.pushViewController(viewController, animated: true)
+                }
+            }
+        }
+    }
     
     @IBAction func loginButtonAction(_ sender: UIButton) {
         if let viewController = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "LoginViewControllerID") as? LoginViewController {

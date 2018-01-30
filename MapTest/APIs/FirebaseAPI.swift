@@ -12,14 +12,10 @@ import GooglePlaces
 
 class FirebaseAPI {
     
-    private var uID: String!
-    
     private static let _instance = FirebaseAPI()
     static var instance: FirebaseAPI { return _instance }
     
     var mainRef: DatabaseReference { return Database.database().reference() }
-    private var changeUserRefHandle: DatabaseHandle?
-    private var newUserRefHandle: DatabaseHandle?
     private lazy var userRef: DatabaseReference = mainRef.child(FIR_CHILD_USER)
     
     let FIR_CHILD_USER = "user"
@@ -47,7 +43,6 @@ class FirebaseAPI {
             if let e = error {
                 completionBlock(false, strongSelf.getErrorString(error: e))
             } else {
-                strongSelf.uID = user!.uid
                 completionBlock(true, "")
             }
         })
@@ -74,6 +69,8 @@ class FirebaseAPI {
     
     func setSelfLocation(coordinate: CLLocationCoordinate2D, lastUpdate: NSDate) {
         let coordinate: Dictionary<String, AnyObject> = ["latitude" : coordinate.latitude as AnyObject, "longitude" : coordinate.longitude as AnyObject]
+        
+        guard let uID = Auth.auth().currentUser?.uid else {return}
         mainRef.child(FIR_CHILD_USER).child(uID).child("profile").child("coordinate").setValue(coordinate)
         mainRef.child(FIR_CHILD_USER).child(uID).child("profile").child("lastUpdate").setValue(lastUpdate.timeIntervalSinceReferenceDate as AnyObject)
     }
@@ -81,29 +78,11 @@ class FirebaseAPI {
     func getUsers(_ completionBlock: @escaping (_ users: [UserModel]) -> ()) {
         userRef.observeSingleEvent(of: .value) { [weak self](snapshot) in
             guard let strongSelf = self else {completionBlock([UserModel]()); return}
-            completionBlock(strongSelf.parseUsers(from: snapshot))
+            let uss = strongSelf.parseUsers(from: snapshot).filter({ (model) -> Bool in
+                return model.coordinate != nil && model.userID != Auth.auth().currentUser?.uid && model.isOnline
+            })
+            completionBlock(uss)
         }
-    }
-    
-    func observeChangeUsers(_ completionBlock: @escaping (_ users: [UserModel]) -> ()) {
-        let userQuery = userRef.queryOrderedByValue()
-        changeUserRefHandle = userQuery.observe(.childChanged, with: { [weak self](snapshot) in
-            guard let strongSelf = self else {completionBlock([UserModel]()); return}
-            completionBlock(strongSelf.parseUsers(from: snapshot))
-        })
-    }
-    
-    func observeNewUsers(_ completionBlock: @escaping (_ users: [UserModel]) -> ()) {
-        let userQuery = userRef.queryOrderedByValue()
-        
-        newUserRefHandle = userQuery.observe(.childAdded, with: { [weak self](snapshot) in
-            guard let strongSelf = self else {completionBlock([UserModel]()); return}
-            completionBlock(strongSelf.parseUsers(from: snapshot))
-        })
-    }
-    
-    func removeObservers() {
-        userRef.removeAllObservers()
     }
     
     private func parseUsers(from dataSnapshot: DataSnapshot) -> [UserModel] {
